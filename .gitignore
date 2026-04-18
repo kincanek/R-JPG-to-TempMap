@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# PyInstaller freeze artefacts at repo root (we ship source, not a bundle).
+# Never committed to root — plugins/ is allowed because the DJI SDK lives there.
+/*.dll
+/*.exe
+/*.pyd
+/*.lib
+/mkl/
+/numpy/
+/osgeo/
+/tcl/
+/tcl8/
+/tk/
+
+# IDE / tooling
+.vscode/
+.idea/
+.claude/
+
+# Conversion artefacts
+*.raw
+tempmap_tif/
+output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local logs
+*.log
