@@ -1,2 +1,1 @@
-numpy>=1.21
-tifffile>=2022.5.4
+Pillow>=9.0

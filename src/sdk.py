@@ -13,8 +13,6 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
-
 from .paths import dji_irp_executable, dji_sdk_dir
 
 
@@ -52,8 +50,8 @@ def extract_temperature(
     width: int,
     height: int,
     params: MeasurementParams = MeasurementParams(),
-) -> np.ndarray:
-    """Run dji_irp 'measure' and return a (height, width) float32 array in Celsius."""
+) -> bytes:
+    """Run dji_irp 'measure' and return raw little-endian float32 bytes (row-major, HxW)."""
     exe = dji_irp_executable()
     if not exe.exists():
         raise DjiSdkError(f"dji_irp executable not found at {exe}")
@@ -62,11 +60,14 @@ def extract_temperature(
 
     with tempfile.TemporaryDirectory(prefix="rjpg2temp_") as tmpdir:
         raw_out = Path(tmpdir) / "measure.raw"
+        # Pass absolute paths: cwd is set to dji_sdk_dir so libdirp can find its
+        # sibling DLLs, which would otherwise resolve our -s argument relative
+        # to the SDK folder and break.
         cmd = [
             str(exe),
-            "-s", str(rjpeg_path),
+            "-s", str(rjpeg_path.resolve()),
             "-a", "measure",
-            "-o", str(raw_out),
+            "-o", str(raw_out.resolve()),
             "--measurefmt", "float32",
             *params.as_cli_args(),
         ]
@@ -93,6 +94,4 @@ def extract_temperature(
                 f"got {actual_bytes}"
             )
 
-        data = np.fromfile(str(raw_out), dtype=np.float32, count=width * height)
-
-    return data.reshape((height, width))
+        return raw_out.read_bytes()

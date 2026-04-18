@@ -8,10 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
-import numpy as np
-import tifffile
+from PIL import Image
 
-from .metadata import copy_metadata, get_thermal_dimensions
+from .metadata import read_source_metadata
 from .sdk import MeasurementParams, extract_temperature
 
 LOGGER = logging.getLogger(__name__)
@@ -27,6 +26,30 @@ class ConversionResult:
     error: Optional[str] = None
 
 
+def _save_temperature_tiff(
+    raw_float32: bytes,
+    width: int,
+    height: int,
+    output_path: Path,
+    exif_bytes: bytes,
+) -> None:
+    """Write a single-band float32 TIFF carrying the source EXIF block.
+
+    The DJI SDK returns raw little-endian float32 pixels in row-major order.
+    Pillow's 'F' mode reads those directly via frombytes, so we avoid a numpy
+    dependency (and the ~600 MB of MKL DLLs that come with Anaconda's numpy).
+
+    Pillow writes uncompressed TIFFs reliably for mode='F'. Compressed TIFF
+    output via libtiff has crashed on some Windows builds, so we stay
+    uncompressed; a 640x512 frame is ~1.3 MB, which is fine.
+    """
+    img = Image.frombytes("F", (width, height), raw_float32)
+    save_kwargs: dict = {"format": "TIFF"}
+    if exif_bytes:
+        save_kwargs["exif"] = exif_bytes
+    img.save(str(output_path), **save_kwargs)
+
+
 def convert_rjpeg(
     input_path: Path,
     output_path: Path,
@@ -35,32 +58,14 @@ def convert_rjpeg(
 ) -> ConversionResult:
     """Convert a single R-JPEG to a float32 temperature TIFF in Celsius."""
     try:
-        dims = get_thermal_dimensions(input_path)
-        temperature = extract_temperature(
-            input_path, dims.width, dims.height, params=params
-        )
+        source_meta = read_source_metadata(input_path)
+        dims = source_meta.dimensions
+
+        raw = extract_temperature(input_path, dims.width, dims.height, params=params)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        tifffile.imwrite(
-            str(output_path),
-            temperature.astype(np.float32, copy=False),
-            photometric="minisblack",
-            compression="zlib",
-            metadata={
-                "Unit": "Celsius",
-                "Source": input_path.name,
-                "Emissivity": params.emissivity,
-                "Distance": params.distance,
-                "Humidity": params.humidity,
-                "Reflection": params.reflection,
-            },
-        )
-
-        if preserve_metadata:
-            try:
-                copy_metadata(input_path, output_path)
-            except Exception as exc:
-                LOGGER.warning("Metadata copy failed for %s: %s", input_path.name, exc)
+        exif = source_meta.exif_bytes if preserve_metadata else b""
+        _save_temperature_tiff(raw, dims.width, dims.height, output_path, exif)
 
         return ConversionResult(source=input_path, output=output_path, ok=True)
     except Exception as exc:

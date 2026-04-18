@@ -9,7 +9,16 @@ from pathlib import Path
 
 
 def project_root() -> Path:
+    """Return the directory where bundled data (plugins/) lives.
+
+    - When running from source: the repo root.
+    - When packaged with PyInstaller: `_MEIPASS` (onefile: a temp dir; onedir:
+      the `_internal/` folder next to the exe).
+    """
     if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass)
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
 
@@ -35,20 +44,10 @@ def dji_irp_omp_executable() -> Path:
     return dji_sdk_dir() / f"dji_irp_omp{suffix}"
 
 
-def exiftool_executable() -> Path:
-    suffix = ".exe" if os.name == "nt" else ""
-    return plugins_dir() / f"exiftool{suffix}"
-
-
 def ensure_plugins_present() -> None:
-    missing = []
-    for name, path in (
-        ("dji_irp", dji_irp_executable()),
-        ("exiftool", exiftool_executable()),
-    ):
-        if not path.exists():
-            missing.append(f"{name} -> {path}")
-    if missing:
+    dji = dji_irp_executable()
+    if not dji.exists():
         raise FileNotFoundError(
-            "Required plugin binaries not found:\n  " + "\n  ".join(missing)
+            f"DJI Thermal SDK binary not found at {dji}. "
+            f"Make sure the plugins/ directory ships next to the application."
         )

@@ -6,8 +6,14 @@ __pycache__/
 .venv/
 venv/
 env/
-build/
 dist/
+
+# PyInstaller working directory (but keep build/*.spec tracked)
+/build/*
+!/build/*.spec
+
+# Inno Setup compiler output
+/installer/Output/
 
 # PyInstaller freeze artefacts at repo root (we ship source, not a bundle).
 # Never committed to root — plugins/ is allowed because the DJI SDK lives there.
