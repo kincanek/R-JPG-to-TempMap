@@ -36,6 +36,9 @@ dist/
 # Local test images (personal drone photos)
 /TestImages/
 
+# Local copy of the frozen v1.0 bundle (published as a release asset)
+/Thermal/
+
 # Conversion artefacts
 *.raw
 tempmap_tif/

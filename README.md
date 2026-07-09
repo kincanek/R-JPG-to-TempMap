@@ -118,6 +118,14 @@ R-JPG-to-TempMap/
 └── README.md
 ```
 
+## Cómo citar / How to cite
+
+La primera versión de esta herramienta fue presentada en el XII Congreso Internacional y XXVI Congreso Nacional de Ciencias Agronómicas (Universidad Autónoma Chapingo, 23–26 de abril de 2024):
+
+> Mota-Delfin, C., López-Canteñs, G. de J., López-Cruz, I. L. y Romantchik-Kriuchkova, E. (2024). **Conversor de imágenes térmicas capturadas por UAV para aplicaciones en fotogrametría**. En *Memoria del XII Congreso Internacional y XXVI Congreso Nacional de Ciencias Agronómicas* (pp. 479–480). Chapingo, Estado de México: Universidad Autónoma Chapingo. Disponible en: https://cinca.chapingo.mx/wp-content/cinca_2024/memoria/memoria_cinca_2024_actualizada_13_jul_2024.pdf
+
+La versión original presentada en el congreso (v1.0, Python 3.7 + GDAL) puede descargarse desde la página de [Releases](https://github.com/kincanek/R-JPG-to-TempMap/releases). Si tienes problemas para obtenerla, solicítala por correo a **al23600132@chapingo.mx**.
+
 ## Referencias
 
 - **DJI Thermal SDK**: https://www.dji.com/downloads/softwares/dji-thermal-sdk
