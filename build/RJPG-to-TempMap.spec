@@ -1,5 +1,7 @@
 # PyInstaller spec: builds a Windows onedir package of R-JPG-to-TempMap.
-# Produces dist/RJPG-to-TempMap/RJPG-to-TempMap.exe plus its supporting files.
+# Produces dist/RJPG-to-TempMap/ containing:
+#   RJPG-to-TempMap.exe       windowed GUI launcher
+#   RJPG-to-TempMap-cli.exe   console launcher for command-line batch use
 #
 # Usage: from the repo root, run  python -m PyInstaller build/RJPG-to-TempMap.spec
 
@@ -9,18 +11,23 @@ from pathlib import Path
 # directory containing the spec; the repo root is one level up.
 REPO_ROOT = Path(SPECPATH).parent
 ENTRY = REPO_ROOT / "app.py"
-PLUGINS = REPO_ROOT / "plugins"
 
-block_cipher = None
+# Ship only the DJI SDK runtime binaries (dji_irp.exe + DLLs) and its license,
+# not the full SDK tree (sample datasets and docs add ~45 MB of dead weight).
+# The destination paths mirror the repo layout so src/paths.py resolves them
+# the same way frozen and from source.
+SDK_NAME = "dji_thermal_sdk_v1.4_20220929"
+SDK_ROOT = REPO_ROOT / "plugins" / SDK_NAME
+SDK_BIN_REL = Path("utility") / "bin" / "windows" / "release_x64"
 
 a = Analysis(
     [str(ENTRY)],
     pathex=[str(REPO_ROOT)],
     binaries=[],
     datas=[
-        # Ship the bundled DJI SDK + ExifTool next to the exe. At runtime
-        # src/paths.py locates them under <exe dir>/plugins/.
-        (str(PLUGINS), "plugins"),
+        (str(SDK_ROOT / SDK_BIN_REL), f"plugins/{SDK_NAME}/{SDK_BIN_REL.as_posix()}"),
+        (str(SDK_ROOT / "License.txt"), f"plugins/{SDK_NAME}"),
+        (str(REPO_ROOT / "assets" / "icon.ico"), "assets"),
     ],
     hiddenimports=[
         "src",
@@ -53,25 +60,45 @@ a = Analysis(
         # Misc heavy optional deps
         "cryptography", "lxml", "docutils", "babel", "pygments", "zmq",
     ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
-exe = EXE(
+# Windowed GUI launcher (no console window on double-click).
+exe_gui = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
     name="RJPG-to-TempMap",
+    icon=str(REPO_ROOT / "assets" / "icon.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,  # Windowed app (GUI). Use True for a console for CLI debugging.
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+# Console launcher: same entry point, but with stdout/stderr attached so the
+# documented CLI usage (progress lines, error messages) actually prints.
+exe_cli = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="RJPG-to-TempMap-cli",
+    icon=str(REPO_ROOT / "assets" / "icon.ico"),
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -80,7 +107,8 @@ exe = EXE(
 )
 
 coll = COLLECT(
-    exe,
+    exe_gui,
+    exe_cli,
     a.binaries,
     a.zipfiles,
     a.datas,

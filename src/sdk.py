@@ -8,6 +8,8 @@ child process.
 
 from __future__ import annotations
 
+import os
+import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -45,13 +47,24 @@ class MeasurementParams:
         ]
 
 
+# dji_irp prints the thermal raster size parsed from the R-JPEG header, e.g.
+#   "      image  width : 640"
+#   "      image height : 512"
+# This is the authoritative size: on some cameras (e.g. M30T) the visible JPEG
+# is upscaled 2x relative to the thermal raster, so Image.size cannot be used.
+_WIDTH_RE = re.compile(r"image\s+width\s*:\s*(\d+)")
+_HEIGHT_RE = re.compile(r"image\s+height\s*:\s*(\d+)")
+
+
 def extract_temperature(
     rjpeg_path: Path,
-    width: int,
-    height: int,
     params: MeasurementParams = MeasurementParams(),
-) -> bytes:
-    """Run dji_irp 'measure' and return raw little-endian float32 bytes (row-major, HxW)."""
+) -> tuple[bytes, int, int]:
+    """Run dji_irp 'measure' on an R-JPEG.
+
+    Returns `(raw, width, height)` where `raw` holds little-endian float32
+    Celsius values in row-major order (height x width).
+    """
     exe = dji_irp_executable()
     if not exe.exists():
         raise DjiSdkError(f"dji_irp executable not found at {exe}")
@@ -78,12 +91,25 @@ def extract_temperature(
             cwd=str(dji_sdk_dir()),
             encoding="utf-8",
             errors="replace",
+            # Keep dji_irp from flashing a console window when launched from
+            # the windowed GUI exe.
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         if result.returncode != 0 or not raw_out.exists():
             raise DjiSdkError(
                 f"dji_irp failed for {rjpeg_path.name}: "
                 f"{result.stderr.strip() or result.stdout.strip() or 'unknown error'}"
             )
+
+        width_match = _WIDTH_RE.search(result.stdout)
+        height_match = _HEIGHT_RE.search(result.stdout)
+        if not width_match or not height_match:
+            raise DjiSdkError(
+                f"Could not parse thermal raster size from dji_irp output "
+                f"for {rjpeg_path.name}"
+            )
+        width = int(width_match.group(1))
+        height = int(height_match.group(1))
 
         expected_bytes = width * height * 4
         actual_bytes = raw_out.stat().st_size
@@ -94,4 +120,4 @@ def extract_temperature(
                 f"got {actual_bytes}"
             )
 
-        return raw_out.read_bytes()
+        return raw_out.read_bytes(), width, height

@@ -6,9 +6,9 @@ REM     pip install -r requirements.txt
 REM     pip install pyinstaller
 REM
 REM Output:
-REM     dist\RJPG-to-TempMap\RJPG-to-TempMap.exe   (main launcher)
-REM     dist\RJPG-to-TempMap\*.dll / *.pyd         (runtime)
-REM     dist\RJPG-to-TempMap\plugins\              (DJI SDK + ExifTool)
+REM     dist\RJPG-to-TempMap\RJPG-to-TempMap.exe       (GUI launcher)
+REM     dist\RJPG-to-TempMap\RJPG-to-TempMap-cli.exe   (console/CLI launcher)
+REM     dist\RJPG-to-TempMap\plugins\                  (DJI SDK runtime)
 
 setlocal
 cd /d "%~dp0"

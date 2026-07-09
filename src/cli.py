@@ -55,7 +55,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
-    inputs = _collect_inputs(args.input, args.recursive)
+    try:
+        inputs = _collect_inputs(args.input, args.recursive)
+    except FileNotFoundError:
+        print(f"ERROR: input path does not exist: {args.input}", file=sys.stderr)
+        return 2
     if not inputs:
         print(f"No R-JPEG files found under {args.input}", file=sys.stderr)
         return 1
@@ -81,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         preserve_metadata=not args.no_metadata,
         workers=args.workers,
         progress=_progress,
+        input_root=args.input if args.input.is_dir() else None,
     )
 
     failed = [r for r in results if not r.ok]

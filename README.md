@@ -16,9 +16,9 @@ Cada píxel del TIFF resultante contiene la temperatura medida en grados Celsius
 
 ## Dos formas de usarlo
 
-### 1. Descargar el `.exe` (no necesita Python)
+### 1. Instalador Windows (no necesita Python)
 
-Descarga el ZIP desde la página [Releases](https://github.com/kincanek/R-JPG-to-TempMap/releases), descomprímelo y ejecuta **`RJPG-to-TempMap.exe`**. Funciona en cualquier Windows 10 / 11 x64 sin instalar nada más.
+Descarga **`RJPG-to-TempMap-vX.Y.Z-setup.exe`** desde la página [Releases](https://github.com/kincanek/R-JPG-to-TempMap/releases) e instálalo como cualquier otro programa (Next → Next → Finish). Crea accesos directos en el Menú Inicio, incluye desinstalador y funciona en cualquier Windows 10 / 11 x64 sin instalar nada más. La interfaz está disponible en **español e inglés** (selector en la esquina superior derecha).
 
 ### 2. Ejecutar desde código fuente
 
@@ -41,22 +41,24 @@ Doble clic en `RJPG-to-TempMap.exe` (o `python app.py`). Selecciona la carpeta c
 
 ### Línea de comandos
 
+Usa **`RJPG-to-TempMap-cli.exe`** (variante con consola, incluida junto al exe principal) para ver el progreso y los errores en la terminal:
+
 ```bash
 # Convertir una carpeta completa
-RJPG-to-TempMap.exe ruta\a\imagenes -o ruta\a\salida
+RJPG-to-TempMap-cli.exe ruta\a\imagenes -o ruta\a\salida
 
 # Con parámetros radiométricos personalizados
-RJPG-to-TempMap.exe ruta\a\imagenes -o ruta\a\salida ^
+RJPG-to-TempMap-cli.exe ruta\a\imagenes -o ruta\a\salida ^
     --distance 10 --humidity 65 --emissivity 0.96 --reflection 20
 
 # Recursivo + 8 workers paralelos
-RJPG-to-TempMap.exe ruta\a\imagenes -o ruta\a\salida --recursive --workers 8
+RJPG-to-TempMap-cli.exe ruta\a\imagenes -o ruta\a\salida --recursive --workers 8
 
 # Sin copiar metadatos EXIF/GPS
-RJPG-to-TempMap.exe ruta\a\imagenes -o ruta\a\salida --no-metadata
+RJPG-to-TempMap-cli.exe ruta\a\imagenes -o ruta\a\salida --no-metadata
 ```
 
-Si ejecutas desde fuente, reemplaza `RJPG-to-TempMap.exe` por `python app.py`.
+Si ejecutas desde fuente, reemplaza `RJPG-to-TempMap-cli.exe` por `python app.py`.
 
 ## Parámetros radiométricos
 
@@ -82,17 +84,17 @@ pip install pyinstaller
 build.bat
 ```
 
-El ejecutable queda en `dist\RJPG-to-TempMap\RJPG-to-TempMap.exe` junto con las DLLs y `plugins\` necesarios. Puedes comprimir esa carpeta completa en un ZIP para distribuirla.
+El ejecutable queda en `dist\RJPG-to-TempMap\` (GUI + CLI) junto con las DLLs y `plugins\` necesarios.
 
-### Instalador Windows (opcional)
+### Instalador Windows
 
-Si tienes [Inno Setup 6](https://jrsoftware.org/isinfo.php) instalado, puedes generar un instalador tipo "Next, Next, Finish" con desinstalador y accesos directos en el Menú Inicio:
+Con [Inno Setup 6](https://jrsoftware.org/isinfo.php) instalado (`winget install JRSoftware.InnoSetup`), genera el instalador para distribuir:
 
 ```bash
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\RJPG-to-TempMap.iss
+"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\RJPG-to-TempMap.iss
 ```
 
-El instalador queda en `installer\Output\RJPG-to-TempMap-v2.0.0-setup.exe`.
+El instalador queda en `installer\Output\RJPG-to-TempMap-v2.1.0-setup.exe`. Ese único archivo es todo lo que necesitas compartir.
 
 ## Estructura del proyecto
 

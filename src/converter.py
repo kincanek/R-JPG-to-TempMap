@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Callable, Iterable, Optional
 
 from PIL import Image
 
-from .metadata import read_source_metadata
+from .metadata import read_exif
 from .sdk import MeasurementParams, extract_temperature
 
 LOGGER = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def _save_temperature_tiff(
     width: int,
     height: int,
     output_path: Path,
-    exif_bytes: bytes,
+    exif: Optional[Image.Exif],
 ) -> None:
     """Write a single-band float32 TIFF carrying the source EXIF block.
 
@@ -45,8 +46,8 @@ def _save_temperature_tiff(
     """
     img = Image.frombytes("F", (width, height), raw_float32)
     save_kwargs: dict = {"format": "TIFF"}
-    if exif_bytes:
-        save_kwargs["exif"] = exif_bytes
+    if exif is not None:
+        save_kwargs["exif"] = exif
     img.save(str(output_path), **save_kwargs)
 
 
@@ -58,14 +59,11 @@ def convert_rjpeg(
 ) -> ConversionResult:
     """Convert a single R-JPEG to a float32 temperature TIFF in Celsius."""
     try:
-        source_meta = read_source_metadata(input_path)
-        dims = source_meta.dimensions
-
-        raw = extract_temperature(input_path, dims.width, dims.height, params=params)
+        raw, width, height = extract_temperature(input_path, params=params)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        exif = source_meta.exif_bytes if preserve_metadata else b""
-        _save_temperature_tiff(raw, dims.width, dims.height, output_path, exif)
+        exif = read_exif(input_path) if preserve_metadata else None
+        _save_temperature_tiff(raw, width, height, output_path, exif)
 
         return ConversionResult(source=input_path, output=output_path, ok=True)
     except Exception as exc:
@@ -98,8 +96,18 @@ def batch_convert(
     preserve_metadata: bool = True,
     workers: int = 4,
     progress: Optional[Callable[[int, int, ConversionResult], None]] = None,
+    cancel: Optional[threading.Event] = None,
+    input_root: Optional[Path] = None,
 ) -> list[ConversionResult]:
-    """Convert many R-JPEGs in parallel. `progress(done, total, result)` is called after each."""
+    """Convert many R-JPEGs in parallel. `progress(done, total, result)` is called after each.
+
+    If `cancel` is set while converting, pending files are dropped; in-flight
+    files finish and are reported. Returned results cover processed files only.
+
+    When `input_root` is given, the folder structure below it is mirrored in
+    `output_dir` so that recursive batches with repeated file names (DJI
+    restarts numbering per folder) do not overwrite each other.
+    """
     paths = list(input_paths)
     total = len(paths)
     results: list[ConversionResult] = []
@@ -108,15 +116,27 @@ def batch_convert(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _out_path(path: Path) -> Path:
+        if input_root is not None:
+            try:
+                rel = path.resolve().relative_to(Path(input_root).resolve())
+                return output_dir / rel.with_suffix(".tif")
+            except ValueError:
+                pass  # path lies outside input_root; fall back to flat layout
+        return output_dir / (path.stem + ".tif")
+
     def _task(path: Path) -> ConversionResult:
-        return convert_rjpeg(
-            path, output_dir / (path.stem + ".tif"), params, preserve_metadata
-        )
+        return convert_rjpeg(path, _out_path(path), params, preserve_metadata)
 
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         futures = {pool.submit(_task, path): path for path in paths}
         done = 0
         for future in as_completed(futures):
+            if cancel is not None and cancel.is_set():
+                for pending in futures:
+                    pending.cancel()
+            if future.cancelled():
+                continue
             result = future.result()
             results.append(result)
             done += 1

@@ -8,7 +8,7 @@
 ;   installer\Output\RJPG-to-TempMap-v2.0.0-setup.exe
 
 #define MyAppName "R-JPG to TempMap"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "kincanek"
 #define MyAppURL "https://github.com/kincanek/R-JPG-to-TempMap"
 #define MyAppExeName "RJPG-to-TempMap.exe"
@@ -34,6 +34,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline dialog
 LicenseFile=..\LICENSE
+SetupIconFile=..\assets\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]

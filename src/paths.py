@@ -1,4 +1,4 @@
-"""Resolve bundled plugin paths (DJI Thermal SDK + ExifTool)."""
+"""Resolve bundled plugin paths (DJI Thermal SDK)."""
 
 from __future__ import annotations
 
@@ -25,6 +25,11 @@ def project_root() -> Path:
 
 def plugins_dir() -> Path:
     return project_root() / "plugins"
+
+
+def asset_path(name: str) -> Path:
+    """Return the path of a bundled asset (icons, etc.)."""
+    return project_root() / "assets" / name
 
 
 def dji_sdk_dir() -> Path:
